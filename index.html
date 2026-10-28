@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cajón de banderas</title>
+<style>
+:root{--bg:#f4efe9;--fg:#2a2320;--card:#fff;--mut:#7a6f68;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1816;--fg:#f1e9e2;--card:#2a2421;--mut:#a99d94}}
+:root[data-theme="dark"]{--bg:#1c1816;--fg:#f1e9e2;--card:#2a2421;--mut:#a99d94}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
+h1{font-size:1.4rem;margin:0 0 4px}
+p.s{margin:0 0 14px;color:var(--mut);font-size:.9rem}
+#q{width:100%;max-width:420px;padding:10px 14px;font-size:1rem;border-radius:10px;border:1px solid var(--mut);background:var(--card);color:var(--fg)}
+#msg{margin-left:10px;color:var(--mut);font-size:.9rem}
+.wrap{overflow-x:auto;padding:30px 0 10px}
+.scene{perspective:1100px;min-width:1100px}
+.crate{background:#c8201a;border-radius:10px;padding:18px 18px 10px;transform:rotateX(14deg);transform-origin:50% 100%;box-shadow:0 20px 30px rgba(0,0,0,.35),inset 0 0 0 4px #a31813}
+.row{display:flex;gap:3px;background:#2b1a17;padding:10px 10px 6px;border-radius:6px;transform-style:preserve-3d}
+.f{flex:1;min-width:34px;cursor:pointer;text-align:center;transition:transform .2s,opacity .2s,filter .2s;transform-style:preserve-3d}
+.f svg{display:block;width:100%;height:230px;border-radius:5px 5px 2px 2px}
+.f span{font-size:.7rem;color:#e9ddd5;display:block;padding-top:4px}
+.f:hover,.f.on{transform:translateY(-22px) translateZ(30px) rotateX(-6deg)}
+.f.hit{transform:translateY(-30px) translateZ(40px);filter:drop-shadow(0 0 8px #ffd23f) drop-shadow(0 0 3px #ffd23f)}
+.f.hit span{color:#ffd23f;font-weight:700}
+.dim .f:not(.hit){opacity:.25}
+.ficha{margin-top:18px;background:var(--card);border-radius:14px;padding:16px;display:flex;gap:18px;align-items:center;max-width:560px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.ficha svg{width:180px;height:120px;flex:none;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.ficha h2{margin:0 0 4px;font-size:1.3rem}
+.ficha div{color:var(--mut);font-size:.95rem}
+[hidden]{display:none!important}
+#tg,.ed button{padding:8px 12px;border-radius:8px;border:1px solid var(--mut);background:var(--card);color:var(--fg);font-size:.9rem;cursor:pointer;margin:3px 4px 3px 0}
+#tg{margin:14px 0 0}
+.ed{margin-top:10px;background:var(--card);border-radius:14px;padding:14px;max-width:560px;display:grid;gap:12px}
+.ed h3{margin:0 0 4px;font-size:.95rem}
+.ed input,.ed select,.ed textarea{padding:7px;border-radius:8px;border:1px solid var(--mut);background:var(--bg);color:var(--fg);font-size:.9rem;max-width:100%}
+.ed input[type=number]{width:70px}.ed input[type=color]{padding:0;width:38px;height:32px}
+.ed textarea{width:100%;height:140px}
+#sel{font-weight:600}
+</style>
+</head>
+<body>
+<h1>🚩 Cajón de banderas</h1>
+<p class="s">Pasá el mouse (o tocá) una bandera para ver el país. Están en orden alfabético, de izquierda a derecha.</p>
+<input id="q" type="search" placeholder="Buscar país… (ej: chile)" autocomplete="off"><span id="msg"></span>
+<div class="wrap" id="wrap"><div class="scene"><div class="crate"><div class="row" id="row"></div></div></div></div>
+<div class="ficha" id="ficha"><svg viewBox="0 0 60 40" id="fs"></svg><div><h2 id="fn">Elegí una bandera</h2><div id="fp">Mirá su ubicación en el cajón.</div></div></div>
+<button id="tg">✏️ Editar orden</button>
+<div class="ed" id="ed" hidden>
+<div><h3 id="sel"></h3>
+<button onclick="move(-1)">◀ Mover a la izquierda</button><button onclick="move(1)">Mover a la derecha ▶</button><button onclick="removeCur()">🗑 Quitar</button><button onclick="$('fr').click()">🖼 Cambiar imagen</button><input type="file" id="fr" accept="image/*" hidden onchange="setImg(this)"><br>
+Ir a la posición <input id="pos" type="number" min="1" value="1"> <button onclick="goTo()">Mover</button></div>
+<div><h3>Agregar bandera (se pone después de la seleccionada)</h3>
+<select id="cat"></select> <button onclick="addCat()">Agregar</button><br>
+<small>¿Otro país? Subí una imagen de su bandera (la calidad no importa):</small><br>
+<input id="cn" placeholder="Nombre del país"> <input id="fi" type="file" accept="image/*"> <button onclick="addImg()">Agregar</button> <span id="emsg"></span></div>
+<div><button id="sv" onclick="saveAll()">⬇ Descargar página actualizada</button><button onclick="undo()">↩ Deshacer</button><button onclick="reset()">Restablecer orden original</button><button onclick="list()">📋 Copiar lista</button>
+<textarea id="lst" hidden readonly></textarea></div>
+<small>Tus cambios se guardan en este navegador. Para que los vea todo el mundo, descargá la página actualizada y subila a GitHub reemplazando index.html.</small>
+</div>
+<script type="application/json" id="state">[{"k": "ARG", "n": "ARGENTINA"}, {"k": "AUS", "n": "AUSTRALIA"}, {"k": "BRA", "n": "BRASIL"}, {"k": "CAN", "n": "CANADÁ"}, {"k": "CPV", "n": "CABO VERDE"}, {"k": "CHL", "n": "CHILE"}, {"k": "COL", "n": "COLOMBIA"}, {"k": "CRI", "n": "COSTA RICA"}, {"k": "CUB", "n": "CUBA"}, {"k": "ECU", "n": "ECUADOR"}, {"k": "SLV", "n": "EL SALVADOR"}, {"k": "ESP", "n": "ESPAÑA"}, {"k": "USA", "n": "ESTADOS UNIDOS"}, {"k": "FIN", "n": "FINLANDIA"}, {"k": "FRA", "n": "FRANCIA"}, {"k": "GTM", "n": "GUATEMALA"}, {"k": "HND", "n": "HONDURAS"}, {"k": "ISR", "n": "ISRAEL"}, {"k": "JAM", "n": "JAMAICA"}, {"k": "KGZ", "n": "KIRGUISTÁN"}, {"k": "MX1", "n": "MÉXICO (bandera 1 de 2)"}, {"k": "MX2", "n": "MÉXICO (bandera 2 de 2)"}, {"k": "PRY", "n": "PARAGUAY"}, {"k": "PER", "n": "PERÚ"}, {"k": "GBR", "n": "REINO UNIDO"}, {"k": "DOM", "n": "REPÚBLICA DOMINICANA"}, {"k": "ZAF", "n": "SUDÁFRICA"}, {"k": "VEN", "n": "VENEZUELA"}]</script>
+<script>
+const star=(x,y,r,f='#fff')=>{let p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,k=i%2?r*.4:r;p.push((x+k*Math.cos(a)).toFixed(1)+','+(y+k*Math.sin(a)).toFixed(1))}return`<polygon points="${p.join(' ')}" fill="${f}"/>`};
+const H=(...c)=>c.map((x,i)=>`<rect y="${i*40/c.length}" width="60" height="${40/c.length+.3}" fill="${x}"/>`).join('');
+const V=(...c)=>c.map((x,i)=>`<rect x="${i*60/c.length}" width="${60/c.length+.3}" height="40" fill="${x}"/>`).join('');
+const R=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+const C=(x,y,r,f)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"/>`;
+const jack=(w,h)=>`<svg x="0" y="0" width="${w}" height="${h}" viewBox="0 0 60 40" preserveAspectRatio="none">${R(0,0,60,40,'#012169')}<path d="M0 0L60 40M60 0L0 40" stroke="#fff" stroke-width="8"/><path d="M0 0L60 40M60 0L0 40" stroke="#c8102e" stroke-width="3"/><path d="M30 0V40M0 20H60" stroke="#fff" stroke-width="13"/><path d="M30 0V40M0 20H60" stroke="#c8102e" stroke-width="8"/></svg>`;
+const mex=V('#006847','#fff','#ce1126')+`<ellipse cx="30" cy="20" rx="5" ry="4.5" fill="#8a5a2b"/><ellipse cx="30" cy="23" rx="4.5" ry="2" fill="#2e8b57"/>`;
+const stripes13=Array.from({length:13},(_,i)=>R(0,i*40/13,60,40/13+.2,i%2?'#fff':'#b22234')).join('');
+const F={
+ARG:H('#74acdf','#fff','#74acdf')+C(30,20,4,'#f6b40e'),
+AUS:R(0,0,60,40,'#00247d')+jack(30,20)+star(15,30,5)+star(45,32,2.4)+star(52,20,2.4)+star(45,9,2.4)+star(38,16,2.4)+star(48,16,1.5),
+BRA:R(0,0,60,40,'#009b3a')+`<polygon points="30,4 56,20 30,36 4,20" fill="#fedf00"/>`+C(30,20,9,'#002776')+`<path d="M21.5 18Q30 15 38.5 22" stroke="#fff" stroke-width="1.6" fill="none"/>`,
+CAN:R(0,0,60,40,'#fff')+R(0,0,15,40,'#d52b1e')+R(45,0,15,40,'#d52b1e')+`<path d="M30 8l3 6 3-1-1 7 4-3 1 3 4-1-2 5h-5v-3l-3 3-1 5h-2l-1-5-3-3v3h-5l-2-5 4 1 1-3 4 3-1-7 3 1z" transform="translate(0 0)" fill="#d52b1e"/>`,
+CPV:R(0,0,60,40,'#003893')+R(0,22,60,6,'#fff')+R(0,24,60,2,'#cf2027')+`<circle cx="22" cy="25" r="8.5" fill="none" stroke="#f7d116" stroke-width="2" stroke-dasharray="1.6 2.2"/>`,
+CHL:R(0,0,60,20,'#fff')+R(0,20,60,20,'#d52b1e')+R(0,0,20,20,'#0039a6')+star(10,10,6),
+COL:H('#fcd116','#fcd116','#003893','#ce1126'),
+CRI:R(0,0,60,40,'#002b7f')+R(0,6.7,60,26.6,'#fff')+R(0,13.4,60,13.2,'#ce1126'),
+CUB:H('#002a8f','#fff','#002a8f','#fff','#002a8f')+`<polygon points="0,0 35,20 0,40" fill="#cf142b"/>`+star(10,20,5),
+ECU:H('#ffdd00','#ffdd00','#034ea2','#ed1c24')+`<ellipse cx="30" cy="20" rx="4" ry="5" fill="#8a6d3b"/>`,
+SLV:H('#0f47af','#fff','#0f47af')+C(30,20,4,'#c9b27c'),
+ESP:H('#aa151b','#f1bf00','#f1bf00','#aa151b')+R(14,16,6,8,'#aa151b'),
+USA:stripes13+R(0,0,26,21.5,'#3c3b6e')+[...Array(9)].map((_,i)=>C(3+(i%3)*9+(Math.floor(i/3)%2)*0,4+Math.floor(i/3)*7,1.3,'#fff')).join(''),
+FIN:R(0,0,60,40,'#fff')+R(16,0,10,40,'#003580')+R(0,15,60,10,'#003580'),
+FRA:V('#0055a4','#fff','#ef4135'),
+GTM:V('#4997d0','#fff','#4997d0')+C(30,20,5,'#6aa84f'),
+HND:H('#0073cf','#fff','#0073cf')+[[30,20],[23,20],[37,20],[26,17],[34,23]].map(p=>star(p[0],p[1],2,'#0073cf')).join(''),
+ISR:R(0,0,60,40,'#fff')+R(0,4,60,5,'#0038b8')+R(0,31,60,5,'#0038b8')+`<polygon points="30,12 37,25 23,25" fill="none" stroke="#0038b8" stroke-width="1.4"/><polygon points="30,28 37,15 23,15" fill="none" stroke="#0038b8" stroke-width="1.4"/>`,
+JAM:R(0,0,60,40,'#000')+`<polygon points="0,0 30,20 0,40" fill="#009b3a"/><polygon points="60,0 30,20 60,40" fill="#009b3a"/><path d="M0 0L60 40M60 0L0 40" stroke="#fed100" stroke-width="5"/>`,
+KGZ:R(0,0,60,40,'#e8112d')+C(30,20,10,'#ffef00')+C(30,20,6,'#e8112d')+`<circle cx="30" cy="20" r="11.5" fill="none" stroke="#ffef00" stroke-width="2" stroke-dasharray="1.2 1.4"/>`,
+MX1:mex,MX2:mex,
+PRY:H('#d52b1e','#fff','#0038a8')+`<circle cx="30" cy="20" r="3.5" fill="none" stroke="#2e8b57" stroke-width="1"/>`,
+PER:V('#d91023','#fff','#d91023'),
+GBR:jack(60,40),
+DOM:R(0,0,60,40,'#fff')+R(0,0,26,17,'#002d62')+R(34,0,26,17,'#ce1126')+R(0,23,26,17,'#ce1126')+R(34,23,26,17,'#002d62')+R(0,17,60,6,'#fff')+R(26,0,8,40,'#fff'),
+ZAF:R(0,0,60,20,'#e03c31')+R(0,20,60,20,'#001489')+`<path d="M0 3L22 20L60 20M0 37L22 20" stroke="#fff" stroke-width="11" fill="none"/><path d="M0 3L22 20L60 20M0 37L22 20" stroke="#007749" stroke-width="6.5" fill="none"/><polygon points="0,6 0,34 14,20" fill="#000" stroke="#ffb81c" stroke-width="2"/>`,
+VEN:H('#ffcc00','#00247d','#cf142b')+[...Array(8)].map((_,i)=>{const a=Math.PI+(i/7)*Math.PI;return C(30-11*Math.cos(a),24+7*Math.sin(a),1,'#fff')}).join('')
+};
+const L0=[['ARG','ARGENTINA'],['AUS','AUSTRALIA'],['BRA','BRASIL'],['CAN','CANADÁ'],['CPV','CABO VERDE'],['CHL','CHILE'],['COL','COLOMBIA'],['CRI','COSTA RICA'],['CUB','CUBA'],['ECU','ECUADOR'],['SLV','EL SALVADOR'],['ESP','ESPAÑA'],['USA','ESTADOS UNIDOS'],['FIN','FINLANDIA'],['FRA','FRANCIA'],['GTM','GUATEMALA'],['HND','HONDURAS'],['ISR','ISRAEL'],['JAM','JAMAICA'],['KGZ','KIRGUISTÁN'],['MX1','MÉXICO (bandera 1 de 2)'],['MX2','MÉXICO (bandera 2 de 2)'],['PRY','PARAGUAY'],['PER','PERÚ'],['GBR','REINO UNIDO'],['DOM','REPÚBLICA DOMINICANA'],['ZAF','SUDÁFRICA'],['VEN','VENEZUELA']];
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const $=id=>document.getElementById(id);
+const row=$('row'),q=$('q'),msg=$('msg');
+const KEY='banderas-orden-v1';
+const def=()=>L0.map(([k,n])=>({k,n}));
+let items,cur=null,hist=[];
+try{items=JSON.parse($('state').textContent)}catch(e){}
+if(!Array.isArray(items)||!items.length||!items.every(x=>x&&x.n&&(x.img||F[x.k])))items=def();
+const BASE=$('state').textContent;
+try{const d=JSON.parse(localStorage.getItem('banderas-borrador')||'null');if(d&&d.base===BASE&&Array.isArray(d.items)&&d.items.length)items=d.items}catch(e){}
+const svgOf=it=>it.img?'<image href="'+it.img+'" width="60" height="40" preserveAspectRatio="xMidYMid slice"/>':F[it.k];
+const save=()=>{try{localStorage.setItem('banderas-borrador',JSON.stringify({base:BASE,items}))}catch(e){}const b=$('sv');if(b)b.textContent='⬇ Descargar página actualizada (hay cambios nuevos)'};
+const snap=()=>{hist.push(JSON.stringify(items));if(hist.length>30)hist.shift()};
+function show(i){const it=items[i];if(!it)return;$('fs').innerHTML=svgOf(it);$('fn').textContent=it.n;$('fp').textContent='Posición '+(i+1)+' de '+items.length+', contando desde la izquierda del cajón.'}
+function sync(){
+  [...row.children].forEach((e,i)=>e.classList.toggle('on',i===cur));
+  $('sel').textContent=cur===null?'Tocá una bandera del cajón para seleccionarla.':'Seleccionada: '+items[cur].n+' (posición '+(cur+1)+')';
+  $('pos').max=items.length;
+}
+function render(){
+  row.innerHTML='';
+  items.forEach((it,i)=>{
+    const d=document.createElement('div');d.className='f';d.title=it.n;
+    d.innerHTML='<svg viewBox="0 0 60 40" preserveAspectRatio="none">'+svgOf(it)+'</svg><span>'+(i+1)+'</span>';
+    d.onmouseenter=()=>show(i);
+    d.onclick=()=>{cur=i;show(i);sync()};
+    row.appendChild(d);
+  });
+  sync();search(true);
+}
+function commit(){save();render();if(cur!==null)show(cur)}
+function move(d){if(cur===null)return;const j=cur+d;if(j<0||j>=items.length)return;snap();[items[cur],items[j]]=[items[j],items[cur]];cur=j;commit()}
+function goTo(){if(cur===null)return;let n=Math.min(items.length,Math.max(1,parseInt($('pos').value)||1))-1;if(n===cur)return;snap();const[x]=items.splice(cur,1);items.splice(n,0,x);cur=n;commit()}
+function removeCur(){if(cur===null)return;snap();items.splice(cur,1);cur=null;if(!items.length)items=[];commit()}
+function addItem(it){snap();const at=cur===null?items.length:cur+1;items.splice(at,0,it);cur=at;commit()}
+function addCat(){const o=$('cat').selectedOptions[0];addItem({k:o.value,n:o.textContent})}
+const toImg=f=>new Promise((res,rej)=>{const r=new FileReader();r.onerror=rej;r.onload=()=>{const im=new Image();im.onerror=rej;im.onload=()=>{const w=Math.min(300,im.width||300),h=Math.round((im.height||200)*w/(im.width||300))||1;const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);res(c.toDataURL('image/jpeg',.75))};im.src=r.result};r.readAsDataURL(f)});
+async function addImg(){const n=$('cn').value.trim().toUpperCase(),f=$('fi').files[0];if(!n){$('cn').focus();return}if(!f){$('emsg').textContent='Elegí una imagen primero.';return}
+  try{const d=await toImg(f);$('emsg').textContent='';addItem({k:'X',n,img:d});$('cn').value='';$('fi').value=''}catch(e){$('emsg').textContent='No pude leer esa imagen.'}}
+async function setImg(inp){const f=inp.files[0];if(!f||cur===null)return;try{const d=await toImg(f);snap();items[cur].img=d;commit()}catch(e){$('emsg').textContent='No pude leer esa imagen.'}inp.value=''}
+function undo(){if(!hist.length)return;items=JSON.parse(hist.pop());cur=null;commit()}
+function reset(){snap();items=def();cur=null;commit()}
+function list(){const t=items.map((x,i)=>(i+1)+'. '+x.n).join('\n');const a=$('lst');a.hidden=false;a.value=t;a.select();try{navigator.clipboard.writeText(t)}catch(e){}}
+function search(keep){
+  const t=norm(q.value);let n=0,first=-1;
+  [...row.children].forEach((e,i)=>{const h=t&&norm(items[i].n).includes(t);e.classList.toggle('hit',!!h);if(h){n++;if(first<0)first=i}});
+  $('wrap').classList.toggle('dim',n>0);
+  msg.textContent=t?(n?n+' resultado'+(n>1?'s':''):'Sin resultados'):'';
+  if(first>=0&&!keep){show(first);row.children[first].scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})}
+}
+q.oninput=()=>search(false);
+$('tg').onclick=()=>{const e=$('ed');e.hidden=!e.hidden;$('tg').textContent=e.hidden?'✏️ Editar orden':'✔️ Listo'};
+const seen=new Set();
+L0.forEach(([k,n])=>{if(k==='MX2')return;const o=document.createElement('option');o.value=k;o.textContent=k==='MX1'?'MÉXICO':n;$('cat').appendChild(o)});
+function buildHtml(){
+  const c=document.documentElement.cloneNode(true),g=id=>c.querySelector('#'+id);
+  g('state').textContent=JSON.stringify(items).replace(/</g,'\\u003c');
+  ['row','cat','fs'].forEach(i=>g(i).innerHTML='');
+  ['fn','fp','sel','msg','emsg'].forEach(i=>g(i).textContent='');
+  g('lst').textContent='';g('lst').setAttribute('hidden','');
+  g('ed').setAttribute('hidden','');g('tg').textContent='✏️ Editar orden';
+  g('sv').textContent='⬇ Descargar página actualizada';g('wrap').classList.remove('dim');
+  return '<!DOCTYPE html>\n'+c.outerHTML;
+}
+function saveAll(){const b=new Blob([buildHtml()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='index.html';document.body.appendChild(a);a.click();a.remove();$('emsg').textContent='Listo: subí el index.html descargado a GitHub reemplazando el anterior.'}
+render();
+if(items.length)show(0);
+</script>
+</body>
+</html>
