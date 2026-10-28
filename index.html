@@ -15,12 +15,12 @@ p.s{margin:0 0 14px;color:var(--mut);font-size:.9rem}
 #q{width:100%;max-width:420px;padding:10px 14px;font-size:1rem;border-radius:10px;border:1px solid var(--mut);background:var(--card);color:var(--fg)}
 #msg{margin-left:10px;color:var(--mut);font-size:.9rem}
 .wrap{overflow-x:auto;padding:30px 0 10px}
-.scene{perspective:1100px;min-width:1100px}
+.scene{perspective:1100px;width:max-content;min-width:100%}
 .crate{background:#c8201a;border-radius:10px;padding:18px 18px 10px;transform:rotateX(14deg);transform-origin:50% 100%;box-shadow:0 20px 30px rgba(0,0,0,.35),inset 0 0 0 4px #a31813}
 .row{display:flex;gap:3px;background:#2b1a17;padding:10px 10px 6px;border-radius:6px;transform-style:preserve-3d}
-.f{flex:1;min-width:34px;cursor:pointer;text-align:center;transition:transform .2s,opacity .2s,filter .2s;transform-style:preserve-3d}
-.f svg{display:block;width:100%;height:230px;border-radius:5px 5px 2px 2px}
-.f span{font-size:.7rem;color:#e9ddd5;display:block;padding-top:4px}
+.f{flex:none;width:var(--w,34px);cursor:pointer;text-align:center;transition:transform .2s,opacity .2s,filter .2s;transform-style:preserve-3d}
+.f svg{display:block;width:100%;height:var(--h,230px);border-radius:5px 5px 2px 2px}
+.f span{font-size:clamp(.45rem,calc(var(--w,34px)*.3),.75rem);color:#e9ddd5;display:block;padding-top:4px}
 .f:hover,.f.on{transform:translateY(-22px) translateZ(30px) rotateX(-6deg)}
 .f.hit{transform:translateY(-30px) translateZ(40px);filter:drop-shadow(0 0 8px #ffd23f) drop-shadow(0 0 3px #ffd23f)}
 .f.hit span{color:#ffd23f;font-weight:700}
@@ -30,7 +30,7 @@ p.s{margin:0 0 14px;color:var(--mut);font-size:.9rem}
 .ficha h2{margin:0 0 4px;font-size:1.3rem}
 .ficha div{color:var(--mut);font-size:.95rem}
 [hidden]{display:none!important}
-#tg,.ed button{padding:8px 12px;border-radius:8px;border:1px solid var(--mut);background:var(--card);color:var(--fg);font-size:.9rem;cursor:pointer;margin:3px 4px 3px 0}
+#tg,.ed button,.zoom button{padding:8px 12px;border-radius:8px;border:1px solid var(--mut);background:var(--card);color:var(--fg);font-size:.9rem;cursor:pointer;margin:3px 4px 3px 0}
 #tg{margin:14px 0 0}
 .ed{margin-top:10px;background:var(--card);border-radius:14px;padding:14px;max-width:560px;display:grid;gap:12px}
 .ed h3{margin:0 0 4px;font-size:.95rem}
@@ -38,12 +38,15 @@ p.s{margin:0 0 14px;color:var(--mut);font-size:.9rem}
 .ed input[type=number]{width:70px}.ed input[type=color]{padding:0;width:38px;height:32px}
 .ed textarea{width:100%;height:140px}
 #sel{font-weight:600}
+@media(max-width:700px){body{padding:10px}.crate{padding:8px 6px 6px}.row{padding:6px 4px;gap:1px}.ficha{position:sticky;bottom:8px;padding:10px;gap:12px;z-index:5}.ficha svg{width:120px;height:80px}.ficha h2{font-size:1.1rem}}
+.zoom{margin-top:10px;font-size:.9rem;color:var(--mut)}
 </style>
 </head>
 <body>
 <h1>🚩 Cajón de banderas</h1>
 <p class="s">Pasá el mouse (o tocá) una bandera para ver el país. Están en orden alfabético, de izquierda a derecha.</p>
 <input id="q" type="search" placeholder="Buscar país… (ej: chile)" autocomplete="off"><span id="msg"></span>
+<div class="zoom">Tamaño: <button onclick="zoomBy(.8)">➖ Achicar</button><button onclick="zoomBy(1.25)">➕ Agrandar</button><button onclick="fit()">Ajustar a pantalla</button></div>
 <div class="wrap" id="wrap"><div class="scene"><div class="crate"><div class="row" id="row"></div></div></div></div>
 <div class="ficha" id="ficha"><svg viewBox="0 0 60 40" id="fs"></svg><div><h2 id="fn">Elegí una bandera</h2><div id="fp">Mirá su ubicación en el cajón.</div></div></div>
 <button id="tg">✏️ Editar orden</button>
@@ -127,7 +130,7 @@ function render(){
     d.onclick=()=>{cur=i;show(i);sync()};
     row.appendChild(d);
   });
-  sync();search(true);
+  sync();search(true);if(mode==='fit')fit();
 }
 function commit(){save();render();if(cur!==null)show(cur)}
 function move(d){if(cur===null)return;const j=cur+d;if(j<0||j>=items.length)return;snap();[items[cur],items[j]]=[items[j],items[cur]];cur=j;commit()}
@@ -160,10 +163,15 @@ function buildHtml(){
   ['fn','fp','sel','msg','emsg'].forEach(i=>g(i).textContent='');
   g('lst').textContent='';g('lst').setAttribute('hidden','');
   g('ed').setAttribute('hidden','');g('tg').textContent='✏️ Editar orden';
-  g('sv').textContent='⬇ Descargar página actualizada';g('wrap').classList.remove('dim');
+  c.removeAttribute('style');g('sv').textContent='⬇ Descargar página actualizada';g('wrap').classList.remove('dim');
   return '<!DOCTYPE html>\n'+c.outerHTML;
 }
 function saveAll(){const b=new Blob([buildHtml()],{type:'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='index.html';document.body.appendChild(a);a.click();a.remove();$('emsg').textContent='Listo: subí el index.html descargado a GitHub reemplazando el anterior.'}
+let W=34,mode='fit';
+function setW(w){W=Math.max(8,Math.min(120,w));const r=document.documentElement.style;r.setProperty('--w',W+'px');r.setProperty('--h',Math.round(Math.min(300,Math.max(130,W*6.8)))+'px')}
+function fit(){mode='fit';const cs=getComputedStyle(row.parentElement),rs=getComputedStyle(row);const ov=parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight)+parseFloat(rs.paddingLeft)+parseFloat(rs.paddingRight)+(parseFloat(rs.columnGap)||0)*(items.length-1);setW(Math.min(40,Math.floor(($('wrap').clientWidth-ov)/items.length)))}
+function zoomBy(k){mode='manual';setW(W*k)}
+addEventListener('resize',()=>{if(mode==='fit')fit()});
 render();
 if(items.length)show(0);
 </script>
